@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI HEALTH RECORDS — Your Health. Your History. One Intelligent Platform.</title>
+  <meta name="description" content="Personal patient health records vault, plain-English AI report explainer, medication reminders, and health timeline." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23176B55'/%3E%3Cpath d='M16 8v16M8 16h16' stroke='%23FFFFFF' stroke-width='2.8' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+  <!-- Premium Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet" />
+
+  <!-- Design System & Modular Styles -->
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/layout.css" />
+  <link rel="stylesheet" href="styles/components.css" />
+  <link rel="stylesheet" href="styles/pages.css" />
+</head>
+<body>
+  <div id="app"></div>
+  <div id="modal-root"></div>
+  <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+
+  <!-- Local In-Browser PDF Parser (Mozilla PDF.js) -->
+  <script src="libs/pdf.min.js"></script>
+
+  <!-- Supabase Auth Client -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js"></script>
+  <script defer src="supabase-config.js"></script>
+
+  <!-- Local In-Browser Clinical Engine & PDF Extraction -->
+  <script defer src="src/services/pdfExtractor.js"></script>
+  <script defer src="src/services/clinicalEngine.js"></script>
+  <script defer src="src/services/reminderScheduler.js"></script>
+
+  <!-- Decoupled Config, Demo Data & Local Service Layer -->
+  <script defer src="src/config/apiConfig.js"></script>
+  <script defer src="src/data/demoData.js"></script>
+  <script defer src="src/services/snsWebhookService.js"></script>
+
+  <!-- Core Utilities & State -->
+  <script defer src="src/utils/icons.js"></script>
+  <script defer src="src/utils/formatters.js"></script>
+  <script defer src="src/utils/charts.js"></script>
+  <script defer src="src/state/appState.js"></script>
+
+  <!-- Shared Layout & Modal Components -->
+  <script defer src="src/components/modals.js"></script>
+  <script defer src="src/components/sidebar.js"></script>
+  <script defer src="src/components/topbar.js"></script>
+
+  <!-- Patient-Only Pages -->
+  <script defer src="src/pages/authPage.js"></script>
+  <script defer src="src/pages/dashboardPage.js"></script>
+  <script defer src="src/pages/recordsPage.js"></script>
+  <script defer src="src/pages/uploadPage.js"></script>
+  <script defer src="src/pages/explainerPage.js"></script>
+  <script defer src="src/pages/historyPage.js"></script>
+  <script defer src="src/pages/comparePage.js"></script>
+  <script defer src="src/pages/summaryPage.js"></script>
+  <script defer src="src/pages/remindersPage.js"></script>
+  <script defer src="src/pages/assistantPage.js"></script>
+  <script defer src="src/pages/inquiriesPage.js"></script>
+  <script defer src="src/pages/profileSettingsPage.js"></script>
+
+  <!-- Bootstrap -->
+  <script defer src="src/app.js"></script>
+</body>
+</html>
