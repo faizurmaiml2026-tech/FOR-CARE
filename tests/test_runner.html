@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AI Health Records — Test Runner</title>
+  <script src="../libs/pdf.min.js"></script>
+  <script src="../src/services/pdfExtractor.js"></script>
+  <script src="../src/services/clinicalEngine.js"></script>
+  <script src="../src/services/reminderScheduler.js"></script>
+  <script src="../src/config/apiConfig.js"></script>
+  <script src="../src/data/demoData.js"></script>
+  <script src="../src/services/snsWebhookService.js"></script>
+  <script src="../src/utils/icons.js"></script>
+  <script src="../src/utils/formatters.js"></script>
+  <script src="../src/utils/charts.js"></script>
+  <script src="../src/state/appState.js"></script>
+</head>
+<body>
+  <h1>Running Automated Test Suite...</h1>
+  <div id="results"></div>
+
+  <script>
+    const results = [];
+    function assert(desc, condition) {
+      results.push({ desc, pass: Boolean(condition) });
+      const p = document.createElement('p');
+      p.style.color = condition ? 'green' : 'red';
+      p.textContent = (condition ? '✓ PASS: ' : '✗ FAIL: ') + desc;
+      document.getElementById('results').appendChild(p);
+    }
+
+    async function runTests() {
+      // 1. Clinical Engine Lab Extraction
+      const sampleText = `
+        PATIENT MEDICAL REPORT
+        Date: 2026-11-10
+        Facility: City Health Diagnostics
+        COMPLETE BLOOD COUNT & METABOLIC PANEL
+        Hemoglobin: 14.5 g/dL (Normal 12.0 - 17.5)
+        Fasting Glucose: 115 mg/dL (Normal 70 - 99)
+        Total Cholesterol: 210 mg/dL (Normal 125 - 200)
+        LDL Cholesterol: 130 mg/dL (Normal < 100)
+        HDL Cholesterol: 52 mg/dL (Normal 40 - 60)
+        Triglycerides: 140 mg/dL (Normal < 150)
+        Serum Creatinine: 0.9 mg/dL (Normal 0.6 - 1.2)
+        Blood Pressure: 135/85 mmHg
+        HbA1c: 6.2 %
+        White Blood Cells (WBC): 6.8 x10^3/uL
+        Platelet Count: 280 x10^3/uL
+      `;
+
+      const engine = window.HealthApp.clinicalEngine;
+      assert('Clinical engine exists', Boolean(engine));
+
+      const markers = engine.extractBiomarkers(sampleText);
+      assert('Extracted at least 7 biomarkers', markers.length >= 7);
+
+      const glucose = markers.find(m => m.id === 'glucose');
+      assert('Glucose extracted properly', glucose && glucose.numericValue === 115);
+      assert('Glucose flagged as High', glucose && glucose.status === 'High');
+
+      const hb = markers.find(m => m.id === 'hemoglobin');
+      assert('Hemoglobin extracted properly', hb && hb.numericValue === 14.5);
+      assert('Hemoglobin status is Normal', hb && hb.status === 'Normal');
+
+      const ldl = markers.find(m => m.id === 'ldl');
+      assert('LDL extracted and flagged High', ldl && ldl.status === 'High');
+
+      const creat = markers.find(m => m.id === 'creatinine');
+      assert('Creatinine extracted and Normal', creat && creat.status === 'Normal');
+
+      // 2. Report Analysis & Explanation
+      const analysis = engine.analyzeReportText(sampleText, 'Blood Work', 'Metabolic Profile');
+      assert('Analysis overview exists', Boolean(analysis.overview));
+      assert('Analysis has simple explanation paragraphs', analysis.simpleExplanation && analysis.simpleExplanation.length > 0);
+      assert('Analysis contains medical disclaimer', Boolean(analysis.disclaimer));
+      assert('Disclaimer mentions consult', analysis.disclaimer.toLowerCase().includes('consult'));
+
+      // 3. Scanned PDF handling
+      const scannedAnalysis = engine.analyzeReportText('', 'Scan', 'X-Ray');
+      assert('Scanned PDF detected gracefully', scannedAnalysis.overview.includes('Scanned') || scannedAnalysis.overview.includes('Archived'));
+
+      // 4. Compare Reports
+      const reportA = {
+        title: 'Initial Lab Work',
+        date: '2026-09-01',
+        extractedText: 'Hemoglobin: 11.5 g/dL Fasting Glucose: 135 mg/dL'
+      };
+      const reportB = {
+        title: 'Follow-Up Lab Work',
+        date: '2026-11-01',
+        extractedText: 'Hemoglobin: 13.8 g/dL Fasting Glucose: 98 mg/dL'
+      };
+      const comparison = engine.compareTwoReports(reportA, reportB);
+      assert('Comparison text generated', Boolean(comparison.comparison));
+      assert('Comparison shows Hemoglobin change', comparison.comparison.includes('Hemoglobin'));
+      assert('Comparison includes disclaimer', comparison.comparison.toLowerCase().includes('consult'));
+
+      // 5. AI Health Assistant
+      const ctx = {
+        profile: { fullName: 'Jane Doe', allergies: ['Penicillin', 'Peanuts'] },
+        reminders: [{ name: 'Metformin', dosage: '500mg', period: 'Morning', time: '08:00 AM', active: true }],
+        reports: [{ title: 'Annual Checkup', date: '2026-11-01', hospital: 'Apollo Care', category: 'Blood Work', extractedText: sampleText }]
+      };
+
+      const diagnosisQuery = engine.answerHealthQuestion('Do I have diabetes? Please diagnose me.', ctx);
+      assert('Assistant refuses to diagnose', diagnosisQuery.reply.toLowerCase().includes('cannot diagnose') || diagnosisQuery.reply.toLowerCase().includes('not a doctor'));
+
+      const prescribeQuery = engine.answerHealthQuestion('What medicine should I take for high cholesterol?', ctx);
+      assert('Assistant refuses to prescribe', prescribeQuery.reply.toLowerCase().includes('cannot') || prescribeQuery.reply.toLowerCase().includes('prescribe'));
+
+      const medQuery = engine.answerHealthQuestion('What are my medications?', ctx);
+      assert('Assistant lists Metformin from reminders', medQuery.reply.includes('Metformin'));
+
+      const allergyQuery = engine.answerHealthQuestion('What are my allergies?', ctx);
+      assert('Assistant lists Penicillin from profile', allergyQuery.reply.includes('Penicillin'));
+
+      // 6. IndexedDB Engine in snsWebhookService
+      const service = window.HealthApp.snsWebhookService;
+      assert('Local service exists', Boolean(service));
+
+      const testUserId = 'test_user_' + Date.now();
+      const savedMed = await service.saveMedicineReminder(testUserId, {
+        name: 'Atorvastatin',
+        dosage: '20mg',
+        frequency: 'Daily',
+        period: 'Evening',
+        time: '09:00 PM',
+        active: true
+      });
+      assert('Saved reminder to IndexedDB', savedMed && savedMed.name === 'Atorvastatin');
+
+      const loadedData = await service.fetchAllUserData(testUserId);
+      assert('Loaded user reminders from IndexedDB', loadedData.reminders.length === 1 && loadedData.reminders[0].name === 'Atorvastatin');
+
+      await service.deleteMedicineReminder(testUserId, savedMed.id);
+      const afterDelData = await service.fetchAllUserData(testUserId);
+      assert('Deleted reminder from IndexedDB', afterDelData.reminders.length === 0);
+
+      // Finish
+      const allPassed = results.every(r => r.pass);
+      const summary = document.createElement('h2');
+      summary.id = 'test-summary';
+      summary.textContent = allPassed ? 'ALL TESTS PASSED (' + results.length + '/' + results.length + ')' : 'SOME TESTS FAILED';
+      summary.style.color = allPassed ? 'green' : 'red';
+      document.body.appendChild(summary);
+      window.__TEST_RESULTS__ = { total: results.length, passed: results.filter(r => r.pass).length, allPassed };
+    }
+
+    window.addEventListener('load', runTests);
+  </script>
+</body>
+</html>
